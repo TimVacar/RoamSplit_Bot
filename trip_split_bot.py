@@ -1,4 +1,3 @@
-cat > trip_split_bot.py <<'PY'
 import asyncio
 import logging
 import os
@@ -9,7 +8,7 @@ from typing import Optional
 import psycopg
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -35,7 +34,6 @@ EXPENSE_CATEGORIES = [
 ]
 
 PENDING_INPUTS: dict[int, dict] = {}
-
 
 TRANSLATIONS = {
     "en": {
@@ -89,7 +87,7 @@ TRANSLATIONS = {
         "invalid_language": "Invalid language. Send one of: EN, RU, RO, IT, FR, ES",
     },
     "ru": {
-        "welcome": "Привет. Я помогаю группам вести расходы в поездках и взаиморасчеты.",
+        "welcome": "Привет. Я помогаю группам вести расходы в поездках и взаиморасчетах.",
         "choose_language": "Выбери язык:",
         "main_menu": "Главное меню",
         "create_trip": "Создать поездку",
@@ -176,7 +174,8 @@ class TripDB:
 
     def _init_db(self):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS users (
                     id BIGSERIAL PRIMARY KEY,
                     telegram_user_id BIGINT UNIQUE NOT NULL,
@@ -186,8 +185,10 @@ class TripDB:
                     active_trip_id BIGINT,
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
-            """)
-            cur.execute("""
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS trips (
                     id BIGSERIAL PRIMARY KEY,
                     title TEXT NOT NULL,
@@ -197,8 +198,10 @@ class TripDB:
                     status TEXT NOT NULL DEFAULT 'active',
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
-            """)
-            cur.execute("""
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS trip_members (
                     id BIGSERIAL PRIMARY KEY,
                     trip_id BIGINT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
@@ -208,8 +211,10 @@ class TripDB:
                     is_active BOOLEAN NOT NULL DEFAULT TRUE,
                     UNIQUE (trip_id, user_id)
                 )
-            """)
-            cur.execute("""
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS expenses (
                     id BIGSERIAL PRIMARY KEY,
                     trip_id BIGINT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
@@ -220,25 +225,31 @@ class TripDB:
                     note TEXT DEFAULT '',
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
-            """)
-            cur.execute("""
+                """
+            )
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS expense_participants (
                     id BIGSERIAL PRIMARY KEY,
                     expense_id BIGINT NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
                     user_id BIGINT NOT NULL
                 )
-            """)
+                """
+            )
             conn.commit()
 
     def upsert_user(self, telegram_user_id: int, display_name: str, username: Optional[str], language_code: str):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO users (telegram_user_id, display_name, username, language_code)
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (telegram_user_id)
                 DO UPDATE SET display_name = EXCLUDED.display_name,
                               username = EXCLUDED.username
-            """, (telegram_user_id, display_name, username, language_code))
+                """,
+                (telegram_user_id, display_name, username, language_code),
+            )
             conn.commit()
 
     def set_user_language(self, telegram_user_id: int, language_code: str):
@@ -277,90 +288,117 @@ class TripDB:
 
     def create_trip(self, owner_user_id: int, draft: TripCreateDraft) -> int:
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO trips (title, base_currency, trip_language, created_by_user_id)
                 VALUES (%s, %s, %s, %s)
                 RETURNING id
-            """, (draft.title, draft.currency, draft.trip_language, owner_user_id))
+                """,
+                (draft.title, draft.currency, draft.trip_language, owner_user_id),
+            )
             trip_id = cur.fetchone()[0]
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO trip_members (trip_id, user_id, role)
                 VALUES (%s, %s, 'admin')
                 ON CONFLICT (trip_id, user_id) DO NOTHING
-            """, (trip_id, owner_user_id))
+                """,
+                (trip_id, owner_user_id),
+            )
             conn.commit()
             return trip_id
 
     def fetch_user_trips(self, user_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT t.id, t.title, t.base_currency, t.trip_language, t.status, t.created_at
                 FROM trips t
                 JOIN trip_members tm ON tm.trip_id = t.id
                 WHERE tm.user_id = %s AND tm.is_active = TRUE
                 ORDER BY t.created_at DESC
-            """, (user_id,))
+                """,
+                (user_id,),
+            )
             return cur.fetchall()
 
     def get_trip_by_id(self, trip_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT id, title, base_currency, trip_language, status, created_at
                 FROM trips
                 WHERE id = %s
                 LIMIT 1
-            """, (trip_id,))
+                """,
+                (trip_id,),
+            )
             return cur.fetchone()
 
     def add_trip_member(self, trip_id: int, user_id: int, role: str = "member") -> bool:
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO trip_members (trip_id, user_id, role)
                 VALUES (%s, %s, %s)
                 ON CONFLICT (trip_id, user_id)
                 DO UPDATE SET is_active = TRUE
-            """, (trip_id, user_id, role))
+                """,
+                (trip_id, user_id, role),
+            )
             conn.commit()
             return True
 
     def is_trip_member(self, trip_id: int, user_id: int) -> bool:
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT 1
                 FROM trip_members
                 WHERE trip_id = %s AND user_id = %s AND is_active = TRUE
                 LIMIT 1
-            """, (trip_id, user_id))
+                """,
+                (trip_id, user_id),
+            )
             return cur.fetchone() is not None
 
     def fetch_trip_members(self, trip_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT u.telegram_user_id, COALESCE(u.display_name, u.username, u.telegram_user_id::text), tm.role
                 FROM trip_members tm
                 JOIN users u ON u.telegram_user_id = tm.user_id
                 WHERE tm.trip_id = %s AND tm.is_active = TRUE
                 ORDER BY tm.joined_at ASC
-            """, (trip_id,))
+                """,
+                (trip_id,),
+            )
             return cur.fetchall()
 
     def fetch_trip_member_ids(self, trip_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT user_id
                 FROM trip_members
                 WHERE trip_id = %s AND is_active = TRUE
                 ORDER BY joined_at ASC
-            """, (trip_id,))
+                """,
+                (trip_id,),
+            )
             return [row[0] for row in cur.fetchall()]
 
     def add_expense(self, trip_id: int, payer_user_id: int, amount: Decimal, currency: str, category: str, note: str) -> int:
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO expenses (trip_id, payer_user_id, amount, currency, category, note)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING id
-            """, (trip_id, payer_user_id, amount, currency, category, note))
+                """,
+                (trip_id, payer_user_id, amount, currency, category, note),
+            )
             expense_id = cur.fetchone()[0]
             conn.commit()
             return expense_id
@@ -376,7 +414,8 @@ class TripDB:
 
     def fetch_trip_expenses(self, trip_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT
                     e.id,
                     e.payer_user_id,
@@ -390,18 +429,23 @@ class TripDB:
                 LEFT JOIN users u ON u.telegram_user_id = e.payer_user_id
                 WHERE e.trip_id = %s
                 ORDER BY e.created_at DESC
-            """, (trip_id,))
+                """,
+                (trip_id,),
+            )
             return cur.fetchall()
 
     def fetch_expense_participants(self, expense_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT ep.user_id, COALESCE(u.display_name, u.username, u.telegram_user_id::text)
                 FROM expense_participants ep
                 LEFT JOIN users u ON u.telegram_user_id = ep.user_id
                 WHERE ep.expense_id = %s
                 ORDER BY ep.id ASC
-            """, (expense_id,))
+                """,
+                (expense_id,),
+            )
             return cur.fetchall()
 
 
