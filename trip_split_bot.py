@@ -418,8 +418,7 @@ async def my_trips_button(message: Message):
     lines = [f"*{t(lang, 'my_trips')}*"]
     for trip_id, title, currency, trip_language, status, created_at in trips:
         lines.append(f"• #{trip_id} {title} | {currency} | {trip_language.upper()} | {status}")
-    await message.answer("
-".join(lines), parse_mode="Markdown", reply_markup=main_menu_keyboard(lang))
+    await message.answer("\n".join(lines), parse_mode="Markdown", reply_markup=main_menu_keyboard(lang))
 
 
 @dp.message(Command("mytrips"))
