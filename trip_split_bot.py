@@ -35,11 +35,11 @@ EXPENSE_CATEGORIES = [
 
 PENDING_INPUTS: dict[int, dict] = {}
 
+
 TRANSLATIONS = {
     "en": {
         "welcome": "Hi. I help groups track trip expenses and settlements.",
         "choose_language": "Choose your language:",
-        "main_menu": "Main menu",
         "create_trip": "Create trip",
         "my_trips": "My trips",
         "join_trip": "Join trip",
@@ -89,7 +89,6 @@ TRANSLATIONS = {
     "ru": {
         "welcome": "Привет. Я помогаю группам вести расходы в поездках и взаиморасчетах.",
         "choose_language": "Выбери язык:",
-        "main_menu": "Главное меню",
         "create_trip": "Создать поездку",
         "my_trips": "Мои поездки",
         "join_trip": "Вступить в поездку",
@@ -335,7 +334,7 @@ class TripDB:
             )
             return cur.fetchone()
 
-    def add_trip_member(self, trip_id: int, user_id: int, role: str = "member") -> bool:
+    def add_trip_member(self, trip_id: int, user_id: int, role: str = "member"):
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 """
@@ -347,7 +346,6 @@ class TripDB:
                 (trip_id, user_id, role),
             )
             conn.commit()
-            return True
 
     def is_trip_member(self, trip_id: int, user_id: int) -> bool:
         with self._connect() as conn, conn.cursor() as cur:
@@ -389,7 +387,15 @@ class TripDB:
             )
             return [row[0] for row in cur.fetchall()]
 
-    def add_expense(self, trip_id: int, payer_user_id: int, amount: Decimal, currency: str, category: str, note: str) -> int:
+    def add_expense(
+        self,
+        trip_id: int,
+        payer_user_id: int,
+        amount: Decimal,
+        currency: str,
+        category: str,
+        note: str,
+    ) -> int:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 """
@@ -514,7 +520,7 @@ def format_money(amount, currency: str) -> str:
 
 
 def calculate_settlements(expenses, expense_participants):
-    balances = {}
+    balances: dict[int, float] = {}
 
     for expense in expenses:
         expense_id, payer_user_id, amount, currency, category, note, created_at, payer_name = expense
@@ -526,7 +532,7 @@ def calculate_settlements(expenses, expense_participants):
         share = amount_f / len(participants)
         balances[payer_user_id] = balances.get(payer_user_id, 0.0) + amount_f
 
-        for participant_user_id, participant_name in participants:
+        for participant_user_id, _participant_name in participants:
             balances[participant_user_id] = balances.get(participant_user_id, 0.0) - share
 
     creditors = []
@@ -585,7 +591,7 @@ async def language_callback(query: CallbackQuery):
     lang = query.data.split(":", 1)[1]
     db.set_user_language(query.from_user.id, lang)
     await query.answer("OK")
-    await query.message.answer(t(lang, "main_menu"), reply_markup=main_menu_keyboard(lang))
+    await query.message.answer(t(lang, "language"), reply_markup=main_menu_keyboard(lang))
 
 
 @dp.message(F.text.startswith("🌐"))
@@ -791,7 +797,6 @@ async def split_callback(query: CallbackQuery):
         participant_ids = db.fetch_trip_member_ids(trip_id)
         db.add_expense_participants(expense_id, participant_ids)
         PENDING_INPUTS.pop(query.from_user.id, None)
-
         await query.answer("OK")
         await query.message.answer(t(lang, "expense_saved"), reply_markup=trip_menu_keyboard(lang))
         return
@@ -961,4 +966,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-PY
