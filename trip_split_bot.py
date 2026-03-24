@@ -35,7 +35,6 @@ EXPENSE_CATEGORIES = [
 
 PENDING_INPUTS: dict[int, dict] = {}
 
-
 TRANSLATIONS = {
     "en": {
         "welcome": "Hi. I help groups track trip expenses and settlements.",
@@ -50,7 +49,7 @@ TRANSLATIONS = {
         "trip_created": "Trip created successfully.",
         "enter_trip_name": "Send trip name.",
         "enter_trip_currency": "Send trip currency. Example: EUR",
-        "choose_trip_language": "Choose trip language:",
+        "enter_trip_language": "Send trip language: EN, RU, RO, IT, FR, ES",
         "no_trips": "You have no trips yet.",
         "unknown": "I didn't understand that. Use menu buttons.",
         "help_text": "MVP actions: create trip, join by ID, open trip, add expense, view members, list expenses, calculate debts.",
@@ -60,7 +59,6 @@ TRANSLATIONS = {
         "joined_trip": "You joined the trip:",
         "trip_opened": "Trip opened:",
         "not_member": "You are not a member of this trip.",
-        "trip_menu": "Trip menu",
         "add_expense": "Add expense",
         "members": "Members",
         "expenses": "Expenses",
@@ -86,6 +84,7 @@ TRANSLATIONS = {
         "balances": "Balances",
         "who_owes": "Who owes whom",
         "invalid_amount": "Invalid amount. Example: 25.50",
+        "invalid_language": "Invalid language. Send one of: EN, RU, RO, IT, FR, ES",
     },
     "ru": {
         "welcome": "Привет. Я помогаю группам вести расходы в поездках и взаиморасчёты.",
@@ -100,7 +99,7 @@ TRANSLATIONS = {
         "trip_created": "Поездка успешно создана.",
         "enter_trip_name": "Отправь название поездки.",
         "enter_trip_currency": "Отправь валюту поездки. Например: EUR",
-        "choose_trip_language": "Выбери язык поездки:",
+        "enter_trip_language": "Отправь язык поездки: EN, RU, RO, IT, FR, ES",
         "no_trips": "У тебя пока нет поездок.",
         "unknown": "Не понял сообщение. Используй кнопки меню.",
         "help_text": "MVP-действия: создать поездку, вступить по ID, открыть поездку, добавить расход, посмотреть участников, расходы и расчёт долгов.",
@@ -110,7 +109,6 @@ TRANSLATIONS = {
         "joined_trip": "Ты вступил в поездку:",
         "trip_opened": "Поездка открыта:",
         "not_member": "Ты не состоишь в этой поездке.",
-        "trip_menu": "Меню поездки",
         "add_expense": "Добавить расход",
         "members": "Участники",
         "expenses": "Расходы",
@@ -136,208 +134,16 @@ TRANSLATIONS = {
         "balances": "Балансы",
         "who_owes": "Кто кому должен",
         "invalid_amount": "Некорректная сумма. Например: 25.50",
+        "invalid_language": "Некорректный язык. Отправь один из: EN, RU, RO, IT, FR, ES",
     },
-    "ro": {
-        "welcome": "Hi. I help groups track trip expenses and settlements.",
-        "choose_language": "Choose your language:",
-        "main_menu": "Main menu",
-        "create_trip": "Create trip",
-        "my_trips": "My trips",
-        "join_trip": "Join trip",
-        "open_trip": "Open trip",
-        "language": "Language",
-        "help": "Help",
-        "trip_created": "Trip created successfully.",
-        "enter_trip_name": "Send trip name.",
-        "enter_trip_currency": "Send trip currency. Example: EUR",
-        "choose_trip_language": "Choose trip language:",
-        "no_trips": "You have no trips yet.",
-        "unknown": "I didn't understand that. Use menu buttons.",
-        "help_text": "MVP actions: create trip, join by ID, open trip, add expense, view members, list expenses, calculate debts.",
-        "enter_trip_id": "Send trip ID. Example: 1",
-        "trip_not_found": "Trip not found.",
-        "already_member": "You are already a member of this trip.",
-        "joined_trip": "You joined the trip:",
-        "trip_opened": "Trip opened:",
-        "not_member": "You are not a member of this trip.",
-        "trip_menu": "Trip menu",
-        "add_expense": "Add expense",
-        "members": "Members",
-        "expenses": "Expenses",
-        "calculate": "Calculate debts",
-        "back": "Back",
-        "enter_amount": "Send expense amount. Example: 25.50",
-        "choose_category": "Choose expense category:",
-        "send_note": "Send comment or type 0 to skip.",
-        "choose_split": "How to split this expense?",
-        "split_all": "Split across all members",
-        "split_selected": "Choose members manually",
-        "send_member_ids": "Send Telegram IDs of members separated by commas. Example: 12345,67890",
-        "expense_saved": "Expense saved.",
-        "no_members": "No members found.",
-        "members_title": "Trip members",
-        "expenses_title": "Trip expenses",
-        "no_expenses": "No expenses yet.",
-        "debts_title": "Settlement result",
-        "nobody_owes": "Nobody owes anyone anything.",
-        "active_trip_missing": "Open a trip first.",
-        "active_trip_cleared": "Returned to main menu.",
-        "your_trip_ids": "Use the trip ID from My trips or from the creation confirmation.",
-        "balances": "Balances",
-        "who_owes": "Who owes whom",
-        "invalid_amount": "Invalid amount. Example: 25.50",
-    },
-    "it": {
-        "welcome": "Hi. I help groups track trip expenses and settlements.",
-        "choose_language": "Choose your language:",
-        "main_menu": "Main menu",
-        "create_trip": "Create trip",
-        "my_trips": "My trips",
-        "join_trip": "Join trip",
-        "open_trip": "Open trip",
-        "language": "Language",
-        "help": "Help",
-        "trip_created": "Trip created successfully.",
-        "enter_trip_name": "Send trip name.",
-        "enter_trip_currency": "Send trip currency. Example: EUR",
-        "choose_trip_language": "Choose trip language:",
-        "no_trips": "You have no trips yet.",
-        "unknown": "I didn't understand that. Use menu buttons.",
-        "help_text": "MVP actions: create trip, join by ID, open trip, add expense, view members, list expenses, calculate debts.",
-        "enter_trip_id": "Send trip ID. Example: 1",
-        "trip_not_found": "Trip not found.",
-        "already_member": "You are already a member of this trip.",
-        "joined_trip": "You joined the trip:",
-        "trip_opened": "Trip opened:",
-        "not_member": "You are not a member of this trip.",
-        "trip_menu": "Trip menu",
-        "add_expense": "Add expense",
-        "members": "Members",
-        "expenses": "Expenses",
-        "calculate": "Calculate debts",
-        "back": "Back",
-        "enter_amount": "Send expense amount. Example: 25.50",
-        "choose_category": "Choose expense category:",
-        "send_note": "Send comment or type 0 to skip.",
-        "choose_split": "How to split this expense?",
-        "split_all": "Split across all members",
-        "split_selected": "Choose members manually",
-        "send_member_ids": "Send Telegram IDs of members separated by commas. Example: 12345,67890",
-        "expense_saved": "Expense saved.",
-        "no_members": "No members found.",
-        "members_title": "Trip members",
-        "expenses_title": "Trip expenses",
-        "no_expenses": "No expenses yet.",
-        "debts_title": "Settlement result",
-        "nobody_owes": "Nobody owes anyone anything.",
-        "active_trip_missing": "Open a trip first.",
-        "active_trip_cleared": "Returned to main menu.",
-        "your_trip_ids": "Use the trip ID from My trips or from the creation confirmation.",
-        "balances": "Balances",
-        "who_owes": "Who owes whom",
-        "invalid_amount": "Invalid amount. Example: 25.50",
-    },
-    "fr": {
-        "welcome": "Hi. I help groups track trip expenses and settlements.",
-        "choose_language": "Choose your language:",
-        "main_menu": "Main menu",
-        "create_trip": "Create trip",
-        "my_trips": "My trips",
-        "join_trip": "Join trip",
-        "open_trip": "Open trip",
-        "language": "Language",
-        "help": "Help",
-        "trip_created": "Trip created successfully.",
-        "enter_trip_name": "Send trip name.",
-        "enter_trip_currency": "Send trip currency. Example: EUR",
-        "choose_trip_language": "Choose trip language:",
-        "no_trips": "You have no trips yet.",
-        "unknown": "I didn't understand that. Use menu buttons.",
-        "help_text": "MVP actions: create trip, join by ID, open trip, add expense, view members, list expenses, calculate debts.",
-        "enter_trip_id": "Send trip ID. Example: 1",
-        "trip_not_found": "Trip not found.",
-        "already_member": "You are already a member of this trip.",
-        "joined_trip": "You joined the trip:",
-        "trip_opened": "Trip opened:",
-        "not_member": "You are not a member of this trip.",
-        "trip_menu": "Trip menu",
-        "add_expense": "Add expense",
-        "members": "Members",
-        "expenses": "Expenses",
-        "calculate": "Calculate debts",
-        "back": "Back",
-        "enter_amount": "Send expense amount. Example: 25.50",
-        "choose_category": "Choose expense category:",
-        "send_note": "Send comment or type 0 to skip.",
-        "choose_split": "How to split this expense?",
-        "split_all": "Split across all members",
-        "split_selected": "Choose members manually",
-        "send_member_ids": "Send Telegram IDs of members separated by commas. Example: 12345,67890",
-        "expense_saved": "Expense saved.",
-        "no_members": "No members found.",
-        "members_title": "Trip members",
-        "expenses_title": "Trip expenses",
-        "no_expenses": "No expenses yet.",
-        "debts_title": "Settlement result",
-        "nobody_owes": "Nobody owes anyone anything.",
-        "active_trip_missing": "Open a trip first.",
-        "active_trip_cleared": "Returned to main menu.",
-        "your_trip_ids": "Use the trip ID from My trips or from the creation confirmation.",
-        "balances": "Balances",
-        "who_owes": "Who owes whom",
-        "invalid_amount": "Invalid amount. Example: 25.50",
-    },
-    "es": {
-        "welcome": "Hi. I help groups track trip expenses and settlements.",
-        "choose_language": "Choose your language:",
-        "main_menu": "Main menu",
-        "create_trip": "Create trip",
-        "my_trips": "My trips",
-        "join_trip": "Join trip",
-        "open_trip": "Open trip",
-        "language": "Language",
-        "help": "Help",
-        "trip_created": "Trip created successfully.",
-        "enter_trip_name": "Send trip name.",
-        "enter_trip_currency": "Send trip currency. Example: EUR",
-        "choose_trip_language": "Choose trip language:",
-        "no_trips": "You have no trips yet.",
-        "unknown": "I didn't understand that. Use menu buttons.",
-        "help_text": "MVP actions: create trip, join by ID, open trip, add expense, view members, list expenses, calculate debts.",
-        "enter_trip_id": "Send trip ID. Example: 1",
-        "trip_not_found": "Trip not found.",
-        "already_member": "You are already a member of this trip.",
-        "joined_trip": "You joined the trip:",
-        "trip_opened": "Trip opened:",
-        "not_member": "You are not a member of this trip.",
-        "trip_menu": "Trip menu",
-        "add_expense": "Add expense",
-        "members": "Members",
-        "expenses": "Expenses",
-        "calculate": "Calculate debts",
-        "back": "Back",
-        "enter_amount": "Send expense amount. Example: 25.50",
-        "choose_category": "Choose expense category:",
-        "send_note": "Send comment or type 0 to skip.",
-        "choose_split": "How to split this expense?",
-        "split_all": "Split across all members",
-        "split_selected": "Choose members manually",
-        "send_member_ids": "Send Telegram IDs of members separated by commas. Example: 12345,67890",
-        "expense_saved": "Expense saved.",
-        "no_members": "No members found.",
-        "members_title": "Trip members",
-        "expenses_title": "Trip expenses",
-        "no_expenses": "No expenses yet.",
-        "debts_title": "Settlement result",
-        "nobody_owes": "Nobody owes anyone anything.",
-        "active_trip_missing": "Open a trip first.",
-        "active_trip_cleared": "Returned to main menu.",
-        "your_trip_ids": "Use the trip ID from My trips or from the creation confirmation.",
-        "balances": "Balances",
-        "who_owes": "Who owes whom",
-        "invalid_amount": "Invalid amount. Example: 25.50",
-    },
+    "ro": {},
+    "it": {},
+    "fr": {},
+    "es": {},
 }
+
+for lang in ["ro", "it", "fr", "es"]:
+    TRANSLATIONS[lang] = TRANSLATIONS["en"]
 
 
 @dataclass
@@ -372,8 +178,7 @@ class TripDB:
 
     def _init_db(self):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id BIGSERIAL PRIMARY KEY,
                     telegram_user_id BIGINT UNIQUE NOT NULL,
@@ -383,10 +188,8 @@ class TripDB:
                     active_trip_id BIGINT,
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
-                """
-            )
-            cur.execute(
-                """
+            """)
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS trips (
                     id BIGSERIAL PRIMARY KEY,
                     title TEXT NOT NULL,
@@ -396,10 +199,8 @@ class TripDB:
                     status TEXT NOT NULL DEFAULT 'active',
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
-                """
-            )
-            cur.execute(
-                """
+            """)
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS trip_members (
                     id BIGSERIAL PRIMARY KEY,
                     trip_id BIGINT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
@@ -409,10 +210,8 @@ class TripDB:
                     is_active BOOLEAN NOT NULL DEFAULT TRUE,
                     UNIQUE (trip_id, user_id)
                 )
-                """
-            )
-            cur.execute(
-                """
+            """)
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS expenses (
                     id BIGSERIAL PRIMARY KEY,
                     trip_id BIGINT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
@@ -423,31 +222,25 @@ class TripDB:
                     note TEXT DEFAULT '',
                     created_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
-                """
-            )
-            cur.execute(
-                """
+            """)
+            cur.execute("""
                 CREATE TABLE IF NOT EXISTS expense_participants (
                     id BIGSERIAL PRIMARY KEY,
                     expense_id BIGINT NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
                     user_id BIGINT NOT NULL
                 )
-                """
-            )
+            """)
             conn.commit()
 
     def upsert_user(self, telegram_user_id: int, display_name: str, username: Optional[str], language_code: str):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 INSERT INTO users (telegram_user_id, display_name, username, language_code)
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (telegram_user_id)
                 DO UPDATE SET display_name = EXCLUDED.display_name,
                               username = EXCLUDED.username
-                """,
-                (telegram_user_id, display_name, username, language_code),
-            )
+            """, (telegram_user_id, display_name, username, language_code))
             conn.commit()
 
     def set_user_language(self, telegram_user_id: int, language_code: str):
@@ -486,117 +279,90 @@ class TripDB:
 
     def create_trip(self, owner_user_id: int, draft: TripCreateDraft) -> int:
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 INSERT INTO trips (title, base_currency, trip_language, created_by_user_id)
                 VALUES (%s, %s, %s, %s)
                 RETURNING id
-                """,
-                (draft.title, draft.currency, draft.trip_language, owner_user_id),
-            )
+            """, (draft.title, draft.currency, draft.trip_language, owner_user_id))
             trip_id = cur.fetchone()[0]
-            cur.execute(
-                """
+            cur.execute("""
                 INSERT INTO trip_members (trip_id, user_id, role)
                 VALUES (%s, %s, 'admin')
                 ON CONFLICT (trip_id, user_id) DO NOTHING
-                """,
-                (trip_id, owner_user_id),
-            )
+            """, (trip_id, owner_user_id))
             conn.commit()
             return trip_id
 
     def fetch_user_trips(self, user_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT t.id, t.title, t.base_currency, t.trip_language, t.status, t.created_at
                 FROM trips t
                 JOIN trip_members tm ON tm.trip_id = t.id
                 WHERE tm.user_id = %s AND tm.is_active = TRUE
                 ORDER BY t.created_at DESC
-                """,
-                (user_id,),
-            )
+            """, (user_id,))
             return cur.fetchall()
 
     def get_trip_by_id(self, trip_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT id, title, base_currency, trip_language, status, created_at
                 FROM trips
                 WHERE id = %s
                 LIMIT 1
-                """,
-                (trip_id,),
-            )
+            """, (trip_id,))
             return cur.fetchone()
 
     def add_trip_member(self, trip_id: int, user_id: int, role: str = "member") -> bool:
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 INSERT INTO trip_members (trip_id, user_id, role)
                 VALUES (%s, %s, %s)
                 ON CONFLICT (trip_id, user_id)
                 DO UPDATE SET is_active = TRUE
-                """,
-                (trip_id, user_id, role),
-            )
+            """, (trip_id, user_id, role))
             conn.commit()
             return True
 
     def is_trip_member(self, trip_id: int, user_id: int) -> bool:
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT 1
                 FROM trip_members
                 WHERE trip_id = %s AND user_id = %s AND is_active = TRUE
                 LIMIT 1
-                """,
-                (trip_id, user_id),
-            )
+            """, (trip_id, user_id))
             return cur.fetchone() is not None
 
     def fetch_trip_members(self, trip_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT u.telegram_user_id, COALESCE(u.display_name, u.username, u.telegram_user_id::text), tm.role
                 FROM trip_members tm
                 JOIN users u ON u.telegram_user_id = tm.user_id
                 WHERE tm.trip_id = %s AND tm.is_active = TRUE
                 ORDER BY tm.joined_at ASC
-                """,
-                (trip_id,),
-            )
+            """, (trip_id,))
             return cur.fetchall()
 
     def fetch_trip_member_ids(self, trip_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT user_id
                 FROM trip_members
                 WHERE trip_id = %s AND is_active = TRUE
                 ORDER BY joined_at ASC
-                """,
-                (trip_id,),
-            )
+            """, (trip_id,))
             return [row[0] for row in cur.fetchall()]
 
     def add_expense(self, trip_id: int, payer_user_id: int, amount: Decimal, currency: str, category: str, note: str) -> int:
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 INSERT INTO expenses (trip_id, payer_user_id, amount, currency, category, note)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING id
-                """,
-                (trip_id, payer_user_id, amount, currency, category, note),
-            )
+            """, (trip_id, payer_user_id, amount, currency, category, note))
             expense_id = cur.fetchone()[0]
             conn.commit()
             return expense_id
@@ -612,8 +378,7 @@ class TripDB:
 
     def fetch_trip_expenses(self, trip_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT
                     e.id,
                     e.payer_user_id,
@@ -627,23 +392,18 @@ class TripDB:
                 LEFT JOIN users u ON u.telegram_user_id = e.payer_user_id
                 WHERE e.trip_id = %s
                 ORDER BY e.created_at DESC
-                """,
-                (trip_id,),
-            )
+            """, (trip_id,))
             return cur.fetchall()
 
     def fetch_expense_participants(self, expense_id: int):
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 SELECT ep.user_id, COALESCE(u.display_name, u.username, u.telegram_user_id::text)
                 FROM expense_participants ep
                 LEFT JOIN users u ON u.telegram_user_id = ep.user_id
                 WHERE ep.expense_id = %s
                 ORDER BY ep.id ASC
-                """,
-                (expense_id,),
-            )
+            """, (expense_id,))
             return cur.fetchall()
 
 
@@ -651,14 +411,6 @@ def language_keyboard():
     builder = InlineKeyboardBuilder()
     for lang in SUPPORTED_LANGUAGES:
         builder.button(text=lang.upper(), callback_data=f"lang:{lang}")
-    builder.adjust(3)
-    return builder.as_markup()
-
-
-def trip_language_keyboard():
-    builder = InlineKeyboardBuilder()
-    for lang in SUPPORTED_LANGUAGES:
-        builder.button(text=lang.upper(), callback_data=f"triplang:{lang}")
     builder.adjust(3)
     return builder.as_markup()
 
@@ -720,7 +472,7 @@ def format_money(amount, currency: str) -> str:
 
 
 def calculate_settlements(expenses, expense_participants):
-    balances: dict[int, float] = {}
+    balances = {}
 
     for expense in expenses:
         expense_id, payer_user_id, amount, currency, category, note, created_at, payer_name = expense
@@ -805,28 +557,6 @@ async def create_trip_button(message: Message):
     lang = current_lang(message.from_user.id)
     PENDING_INPUTS[message.from_user.id] = {"flow": "create_trip", "step": "title"}
     await message.answer(t(lang, "enter_trip_name"), reply_markup=main_menu_keyboard(lang))
-
-
-    if not state or state.get("flow") != "create_trip" or state.get("step") != "trip_language":
-        await query.answer("Start trip creation first")
-        return
-
-    trip_lang = query.data.split(":", 1)[1]
-    draft = TripCreateDraft(
-        title=state["title"],
-        currency=state["currency"],
-        trip_language=trip_lang,
-    )
-
-    trip_id = db.create_trip(query.from_user.id, draft)
-    db.set_active_trip(query.from_user.id, trip_id)
-    PENDING_INPUTS.pop(query.from_user.id, None)
-
-    await query.answer("OK")
-    await query.message.answer(
-        f"{t(lang, 'trip_created')}\nID: {trip_id}\n{draft.title} | {draft.currency} | {draft.trip_language.upper()}",
-        reply_markup=trip_menu_keyboard(lang),
-    )
 
 
 @dp.message(F.text.startswith("🧳"))
@@ -1040,41 +770,39 @@ async def text_handler(message: Message):
     lang = current_lang(user_id)
     state = PENDING_INPUTS.get(user_id)
 
-if state and state.get("flow") == "create_trip":
-    if state.get("step") == "title":
-        state["title"] = message.text.strip()
-        state["step"] = "currency"
-        await message.answer(t(lang, "enter_trip_currency"), reply_markup=main_menu_keyboard(lang))
-        return
-
-    if state.get("step") == "currency":
-        state["currency"] = message.text.strip().upper() or DEFAULT_TRIP_CURRENCY
-        state["step"] = "trip_language"
-        await message.answer("Send trip language: EN, RU, RO, IT, FR, ES", reply_markup=main_menu_keyboard(lang))
-        return
-
-    if state.get("step") == "trip_language":
-        trip_lang = message.text.strip().lower()
-
-        if trip_lang not in ["en", "ru", "ro", "it", "fr", "es"]:
-            await message.answer("Invalid language. Send one of: EN, RU, RO, IT, FR, ES", reply_markup=main_menu_keyboard(lang))
+    if state and state.get("flow") == "create_trip":
+        if state.get("step") == "title":
+            state["title"] = message.text.strip()
+            state["step"] = "currency"
+            await message.answer(t(lang, "enter_trip_currency"), reply_markup=main_menu_keyboard(lang))
             return
 
-        draft = TripCreateDraft(
-            title=state["title"],
-            currency=state["currency"],
-            trip_language=trip_lang,
-        )
+        if state.get("step") == "currency":
+            state["currency"] = message.text.strip().upper() or DEFAULT_TRIP_CURRENCY
+            state["step"] = "trip_language"
+            await message.answer(t(lang, "enter_trip_language"), reply_markup=main_menu_keyboard(lang))
+            return
 
-        trip_id = db.create_trip(message.from_user.id, draft)
-        db.set_active_trip(message.from_user.id, trip_id)
-        PENDING_INPUTS.pop(message.from_user.id, None)
+        if state.get("step") == "trip_language":
+            trip_lang = message.text.strip().lower()
+            if trip_lang not in SUPPORTED_LANGUAGES:
+                await message.answer(t(lang, "invalid_language"), reply_markup=main_menu_keyboard(lang))
+                return
 
-        await message.answer(
-            f"{t(lang, 'trip_created')}\nID: {trip_id}\n{draft.title} | {draft.currency} | {draft.trip_language.upper()}",
-            reply_markup=trip_menu_keyboard(lang),
-        )
-        return
+            draft = TripCreateDraft(
+                title=state["title"],
+                currency=state["currency"],
+                trip_language=trip_lang,
+            )
+            trip_id = db.create_trip(message.from_user.id, draft)
+            db.set_active_trip(message.from_user.id, trip_id)
+            PENDING_INPUTS.pop(user_id, None)
+
+            await message.answer(
+                f"{t(lang, 'trip_created')}\nID: {trip_id}\n{draft.title} | {draft.currency} | {draft.trip_language.upper()}",
+                reply_markup=trip_menu_keyboard(lang),
+            )
+            return
 
     if state and state.get("flow") == "join_trip":
         trip_id_raw = message.text.strip()
