@@ -1,3 +1,4 @@
+cat > trip_split_bot.py <<'PY'
 import asyncio
 import logging
 import os
@@ -35,6 +36,7 @@ EXPENSE_CATEGORIES = [
 
 PENDING_INPUTS: dict[int, dict] = {}
 
+
 TRANSLATIONS = {
     "en": {
         "welcome": "Hi. I help groups track trip expenses and settlements.",
@@ -52,7 +54,7 @@ TRANSLATIONS = {
         "enter_trip_language": "Send trip language: EN, RU, RO, IT, FR, ES",
         "no_trips": "You have no trips yet.",
         "unknown": "I didn't understand that. Use menu buttons.",
-        "help_text": "MVP actions: create trip, join by ID, open trip, add expense, view members, list expenses, calculate debts.",
+        "help_text": "Create a trip, join by ID, open a trip, add expenses, view members, list expenses, and calculate debts.",
         "enter_trip_id": "Send trip ID. Example: 1",
         "trip_not_found": "Trip not found.",
         "already_member": "You are already a member of this trip.",
@@ -87,7 +89,7 @@ TRANSLATIONS = {
         "invalid_language": "Invalid language. Send one of: EN, RU, RO, IT, FR, ES",
     },
     "ru": {
-        "welcome": "Привет. Я помогаю группам вести расходы в поездках и взаиморасчёты.",
+        "welcome": "Привет. Я помогаю группам вести расходы в поездках и взаиморасчеты.",
         "choose_language": "Выбери язык:",
         "main_menu": "Главное меню",
         "create_trip": "Создать поездку",
@@ -102,7 +104,7 @@ TRANSLATIONS = {
         "enter_trip_language": "Отправь язык поездки: EN, RU, RO, IT, FR, ES",
         "no_trips": "У тебя пока нет поездок.",
         "unknown": "Не понял сообщение. Используй кнопки меню.",
-        "help_text": "MVP-действия: создать поездку, вступить по ID, открыть поездку, добавить расход, посмотреть участников, расходы и расчёт долгов.",
+        "help_text": "Создай поездку, вступи по ID, открой поездку, добавь расход, посмотри участников, расходы и расчет долгов.",
         "enter_trip_id": "Введи ID поездки. Например: 1",
         "trip_not_found": "Поездка не найдена.",
         "already_member": "Ты уже состоишь в этой поездке.",
@@ -121,25 +123,21 @@ TRANSLATIONS = {
         "split_all": "Делить на всех",
         "split_selected": "Выбрать участников вручную",
         "send_member_ids": "Отправь Telegram ID участников через запятую. Например: 12345,67890",
-        "expense_saved": "Расход сохранён.",
+        "expense_saved": "Расход сохранен.",
         "no_members": "Участники не найдены.",
         "members_title": "Участники поездки",
         "expenses_title": "Расходы поездки",
         "no_expenses": "Пока нет расходов.",
-        "debts_title": "Результат расчёта",
+        "debts_title": "Результат расчета",
         "nobody_owes": "Никто никому не должен.",
         "active_trip_missing": "Сначала открой поездку.",
         "active_trip_cleared": "Вернулись в главное меню.",
-        "your_trip_ids": "Используй ID из раздела «Мои поездки» или из сообщения после создания.",
+        "your_trip_ids": "Используй ID из раздела 'Мои поездки' или из сообщения после создания.",
         "balances": "Балансы",
         "who_owes": "Кто кому должен",
         "invalid_amount": "Некорректная сумма. Например: 25.50",
         "invalid_language": "Некорректный язык. Отправь один из: EN, RU, RO, IT, FR, ES",
     },
-    "ro": {},
-    "it": {},
-    "fr": {},
-    "es": {},
 }
 
 for lang in ["ro", "it", "fr", "es"]:
@@ -691,7 +689,7 @@ async def calculate_button(message: Message):
         lines.append(f"*{t(lang, 'who_owes')}*")
         for debtor_id, creditor_id, amount in settlements:
             lines.append(
-                f"• {members.get(debtor_id, str(debtor_id))} → {members.get(creditor_id, str(creditor_id))}: {format_money(amount, currency)}"
+                f"• {members.get(debtor_id, str(debtor_id))} -> {members.get(creditor_id, str(creditor_id))}: {format_money(amount, currency)}"
             )
 
     await message.answer("\n".join(lines), parse_mode="Markdown", reply_markup=trip_menu_keyboard(lang))
@@ -919,3 +917,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+PY
