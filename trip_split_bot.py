@@ -818,54 +818,37 @@ async def text_handler(message: Message):
     state = PENDING_INPUTS.get(user_id)
 
     if state and state.get("flow") == "create_trip":
-    if state.get("step") == "title":
-        state["title"] = message.text.strip()
-        state["step"] = "currency"
-        await message.answer(f"DEBUG: title saved = {state['title']}")
-        await message.answer(t(lang, "enter_trip_currency"), reply_markup=main_menu_keyboard(lang))
-        return
-
-    if state.get("step") == "currency":
-        state["currency"] = message.text.strip().upper() or DEFAULT_TRIP_CURRENCY
-        state["step"] = "trip_language"
-        await message.answer(f"DEBUG: currency saved = {state['currency']}")
-        await message.answer(t(lang, "enter_trip_language"), reply_markup=main_menu_keyboard(lang))
-        return
-
-    if state.get("step") == "trip_language":
-        await message.answer(f"DEBUG: got trip language input = {message.text.strip()}")
-        trip_lang = message.text.strip().lower()
-
-        if trip_lang not in SUPPORTED_LANGUAGES:
-            await message.answer("DEBUG: invalid language branch")
-            await message.answer(t(lang, "invalid_language"), reply_markup=main_menu_keyboard(lang))
+        if state.get("step") == "title":
+            state["title"] = message.text.strip()
+            state["step"] = "currency"
+            await message.answer(t(lang, "enter_trip_currency"), reply_markup=main_menu_keyboard(lang))
             return
 
-        try:
+        if state.get("step") == "currency":
+            state["currency"] = message.text.strip().upper() or DEFAULT_TRIP_CURRENCY
+            state["step"] = "trip_language"
+            await message.answer(t(lang, "enter_trip_language"), reply_markup=main_menu_keyboard(lang))
+            return
+
+        if state.get("step") == "trip_language":
+            trip_lang = message.text.strip().lower()
+            if trip_lang not in SUPPORTED_LANGUAGES:
+                await message.answer(t(lang, "invalid_language"), reply_markup=main_menu_keyboard(lang))
+                return
+
             draft = TripCreateDraft(
                 title=state["title"],
                 currency=state["currency"],
                 trip_language=trip_lang,
             )
-            await message.answer(f"DEBUG: draft ok = {draft.title} | {draft.currency} | {draft.trip_language}")
-
             trip_id = db.create_trip(message.from_user.id, draft)
-            await message.answer(f"DEBUG: trip_id created = {trip_id}")
-
             db.set_active_trip(message.from_user.id, trip_id)
-            await message.answer("DEBUG: active trip set")
-
             PENDING_INPUTS.pop(user_id, None)
-            await message.answer("DEBUG: state cleared")
 
             await message.answer(
                 f"{t(lang, 'trip_created')}\nID: {trip_id}\n{draft.title} | {draft.currency} | {draft.trip_language.upper()}",
                 reply_markup=trip_menu_keyboard(lang),
             )
-            return
-
-        except Exception as e:
-            await message.answer(f"DEBUG ERROR: {type(e).__name__}: {e}")
             return
 
     if state and state.get("flow") == "join_trip":
