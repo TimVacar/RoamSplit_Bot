@@ -470,6 +470,33 @@ async def text_handler(message: Message):
             await message.answer(t(lang, "choose_trip_language"), reply_markup=trip_language_keyboard())
             return
 
+    if state and state.get("flow") == "join_trip":
+        trip_id_raw = message.text.strip()
+        if not trip_id_raw.isdigit():
+            await message.answer("ID поездки должен быть числом. Например: 1", reply_markup=main_menu_keyboard(lang))
+            return
+
+        trip_id = int(trip_id_raw)
+        trip = db.get_trip_by_id(trip_id)
+        if not trip:
+            await message.answer("Поездка не найдена.", reply_markup=main_menu_keyboard(lang))
+            return
+
+        if db.is_trip_member(trip_id, user_id):
+            PENDING_INPUTS.pop(user_id, None)
+            await message.answer("Ты уже состоишь в этой поездке.", reply_markup=main_menu_keyboard(lang))
+            return
+
+        db.add_trip_member(trip_id, user_id, role="member")
+        PENDING_INPUTS.pop(user_id, None)
+        _, title, currency, trip_language, status, created_at = trip
+        await message.answer(
+            f"Ты вступил в поездку:
+#{trip_id} {title} | {currency} | {trip_language.upper()}",
+            reply_markup=main_menu_keyboard(lang),
+        )
+        return
+
     await message.answer(t(lang, "unknown"), reply_markup=main_menu_keyboard(lang))
 
 
