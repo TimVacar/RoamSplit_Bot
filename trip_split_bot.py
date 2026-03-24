@@ -2,7 +2,6 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Optional
 
 import psycopg
@@ -11,9 +10,6 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
-# =========================
-# CONFIG
-# =========================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
 DEFAULT_TRIP_CURRENCY = os.getenv("DEFAULT_TRIP_CURRENCY", "EUR")
@@ -41,6 +37,10 @@ TRANSLATIONS = {
         "no_trips": "You have no trips yet.",
         "unknown": "I didn't understand that. Use menu buttons.",
         "help_text": "MVP actions: create trip, list trips, join by ID, change language.",
+        "enter_trip_id": "Send trip ID. Example: 1",
+        "trip_not_found": "Trip not found.",
+        "already_member": "You are already a member of this trip.",
+        "joined_trip": "You joined the trip:",
     },
     "ru": {
         "welcome": "Привет. Я помогаю группам вести расходы в поездках и взаиморасчёты.",
@@ -58,6 +58,10 @@ TRANSLATIONS = {
         "no_trips": "У тебя пока нет поездок.",
         "unknown": "Не понял сообщение. Используй кнопки меню.",
         "help_text": "MVP-действия: создать поездку, посмотреть поездки, вступить по ID, сменить язык.",
+        "enter_trip_id": "Введи ID поездки. Например: 1",
+        "trip_not_found": "Поездка не найдена.",
+        "already_member": "Ты уже состоишь в этой поездке.",
+        "joined_trip": "Ты вступил в поездку:",
     },
     "ro": {
         "welcome": "Salut. Te ajut să gestionezi cheltuielile de grup din călătorii.",
@@ -75,6 +79,10 @@ TRANSLATIONS = {
         "no_trips": "Încă nu ai călătorii.",
         "unknown": "Nu am înțeles mesajul. Folosește butoanele.",
         "help_text": "Acțiuni MVP: creează călătorie, vezi călătoriile, intră după ID, schimbă limba.",
+        "enter_trip_id": "Trimite ID-ul călătoriei. Exemplu: 1",
+        "trip_not_found": "Călătoria nu a fost găsită.",
+        "already_member": "Ești deja membru în această călătorie.",
+        "joined_trip": "Ai intrat în călătorie:",
     },
     "it": {
         "welcome": "Ciao. Ti aiuto a gestire le spese di gruppo in viaggio.",
@@ -92,6 +100,10 @@ TRANSLATIONS = {
         "no_trips": "Non hai ancora viaggi.",
         "unknown": "Messaggio non riconosciuto. Usa i pulsanti.",
         "help_text": "Azioni MVP: crea viaggio, vedi viaggi, entra tramite ID, cambia lingua.",
+        "enter_trip_id": "Invia l'ID del viaggio. Esempio: 1",
+        "trip_not_found": "Viaggio non trovato.",
+        "already_member": "Sei già membro di questo viaggio.",
+        "joined_trip": "Ti sei unito al viaggio:",
     },
     "fr": {
         "welcome": "Bonjour. Je t'aide à gérer les dépenses de groupe en voyage.",
@@ -109,6 +121,10 @@ TRANSLATIONS = {
         "no_trips": "Tu n'as pas encore de voyages.",
         "unknown": "Je n'ai pas compris. Utilise les boutons.",
         "help_text": "Actions MVP : créer un voyage, voir les voyages, rejoindre via ID, changer la langue.",
+        "enter_trip_id": "Envoie l'ID du voyage. Exemple : 1",
+        "trip_not_found": "Voyage introuvable.",
+        "already_member": "Tu fais déjà partie de ce voyage.",
+        "joined_trip": "Tu as rejoint le voyage :",
     },
     "es": {
         "welcome": "Hola. Te ayudo a gestionar gastos grupales de viaje.",
@@ -126,6 +142,10 @@ TRANSLATIONS = {
         "no_trips": "Todavía no tienes viajes.",
         "unknown": "No entendí el mensaje. Usa los botones.",
         "help_text": "Acciones MVP: crear viaje, ver viajes, unirse por ID, cambiar idioma.",
+        "enter_trip_id": "Envía el ID del viaje. Ejemplo: 1",
+        "trip_not_found": "Viaje no encontrado.",
+        "already_member": "Ya formas parte de este viaje.",
+        "joined_trip": "Te uniste al viaje:",
     },
 }
 
@@ -303,7 +323,7 @@ class TripDB:
 
 def language_keyboard():
     builder = InlineKeyboardBuilder()
-    for lang in SUPPORTED_LANGUAGES:
+    for lang in ["en", "ru", "ro", "it", "fr", "es"]:
         builder.button(text=lang.upper(), callback_data=f"lang:{lang}")
     builder.adjust(3)
     return builder.as_markup()
@@ -311,7 +331,7 @@ def language_keyboard():
 
 def trip_language_keyboard():
     builder = InlineKeyboardBuilder()
-    for lang in SUPPORTED_LANGUAGES:
+    for lang in ["en", "ru", "ro", "it", "fr", "es"]:
         builder.button(text=lang.upper(), callback_data=f"triplang:{lang}")
     builder.adjust(3)
     return builder.as_markup()
@@ -339,16 +359,23 @@ def current_lang(user_id: int) -> str:
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
-    tg_lang = (message.from_user.language_code or "en").split("-")[0].lower()
-    user_lang = tg_lang if tg_lang in SUPPORTED_LANGUAGES else "en"
+    user_lang = "en"
+
     db.upsert_user(
         telegram_user_id=message.from_user.id,
         display_name=message.from_user.full_name,
         username=message.from_user.username,
         language_code=user_lang,
     )
-    await message.answer(t(user_lang, "welcome"), reply_markup=main_menu_keyboard(user_lang))
-    await message.answer(t(user_lang, "choose_language"), reply_markup=language_keyboard())
+
+    await message.answer(
+        t(user_lang, "welcome"),
+        reply_markup=main_menu_keyboard(user_lang),
+    )
+    await message.answer(
+        t(user_lang, "choose_language"),
+        reply_markup=language_keyboard(),
+    )
 
 
 @dp.callback_query(F.data.startswith("lang:"))
@@ -392,15 +419,19 @@ async def trip_language_callback(query: CallbackQuery):
     if not state or state.get("flow") != "create_trip" or state.get("step") != "trip_language":
         await query.answer("Start trip creation first")
         return
+
     trip_lang = query.data.split(":", 1)[1]
     state["trip_language"] = trip_lang
+
     draft = TripCreateDraft(
         title=state["title"],
         currency=state["currency"],
         trip_language=state["trip_language"],
     )
+
     trip_id = db.create_trip(query.from_user.id, draft)
     PENDING_INPUTS.pop(query.from_user.id, None)
+
     await query.answer("OK")
     await query.message.answer(
         f"{t(user_lang, 'trip_created')}\nID: {trip_id}\n{draft.title} | {draft.currency} | {draft.trip_language.upper()}",
@@ -415,9 +446,11 @@ async def my_trips_button(message: Message):
     if not trips:
         await message.answer(t(lang, "no_trips"), reply_markup=main_menu_keyboard(lang))
         return
+
     lines = [f"*{t(lang, 'my_trips')}*"]
     for trip_id, title, currency, trip_language, status, created_at in trips:
         lines.append(f"• #{trip_id} {title} | {currency} | {trip_language.upper()} | {status}")
+
     await message.answer("\n".join(lines), parse_mode="Markdown", reply_markup=main_menu_keyboard(lang))
 
 
@@ -430,19 +463,14 @@ async def my_trips_command(message: Message):
 async def join_trip_button(message: Message):
     lang = current_lang(message.from_user.id)
     PENDING_INPUTS[message.from_user.id] = {"flow": "join_trip", "step": "trip_id"}
-    await message.answer("Введи ID поездки. Например: 1", reply_markup=main_menu_keyboard(lang))
+    await message.answer(t(lang, "enter_trip_id"), reply_markup=main_menu_keyboard(lang))
 
 
 @dp.message(Command("jointrip"))
 async def join_trip_command(message: Message):
     lang = current_lang(message.from_user.id)
     PENDING_INPUTS[message.from_user.id] = {"flow": "join_trip", "step": "trip_id"}
-    await message.answer("Введи ID поездки. Например: 1", reply_markup=main_menu_keyboard(lang))
-
-
-@dp.message(Command("jointrip"))
-async def my_trips_command(message: Message):
-    await my_trips_button(message)
+    await message.answer(t(lang, "enter_trip_id"), reply_markup=main_menu_keyboard(lang))
 
 
 @dp.message(F.text.startswith("❓"))
@@ -463,6 +491,7 @@ async def text_handler(message: Message):
             state["step"] = "currency"
             await message.answer(t(lang, "enter_trip_currency"), reply_markup=main_menu_keyboard(lang))
             return
+
         if state.get("step") == "currency":
             state["currency"] = message.text.strip().upper() or DEFAULT_TRIP_CURRENCY
             state["step"] = "trip_language"
@@ -471,27 +500,29 @@ async def text_handler(message: Message):
 
     if state and state.get("flow") == "join_trip":
         trip_id_raw = message.text.strip()
+
         if not trip_id_raw.isdigit():
-            await message.answer("ID поездки должен быть числом. Например: 1", reply_markup=main_menu_keyboard(lang))
+            await message.answer(t(lang, "enter_trip_id"), reply_markup=main_menu_keyboard(lang))
             return
 
         trip_id = int(trip_id_raw)
         trip = db.get_trip_by_id(trip_id)
+
         if not trip:
-            await message.answer("Поездка не найдена.", reply_markup=main_menu_keyboard(lang))
+            await message.answer(t(lang, "trip_not_found"), reply_markup=main_menu_keyboard(lang))
             return
 
         if db.is_trip_member(trip_id, user_id):
             PENDING_INPUTS.pop(user_id, None)
-            await message.answer("Ты уже состоишь в этой поездке.", reply_markup=main_menu_keyboard(lang))
+            await message.answer(t(lang, "already_member"), reply_markup=main_menu_keyboard(lang))
             return
 
         db.add_trip_member(trip_id, user_id, role="member")
         PENDING_INPUTS.pop(user_id, None)
+
         _, title, currency, trip_language, status, created_at = trip
         await message.answer(
-            f"Ты вступил в поездку:
-#{trip_id} {title} | {currency} | {trip_language.upper()}",
+            f"{t(lang, 'joined_trip')}\n#{trip_id} {title} | {currency} | {trip_language.upper()}",
             reply_markup=main_menu_keyboard(lang),
         )
         return
