@@ -40,7 +40,7 @@ TRANSLATIONS = {
         "choose_trip_language": "Choose trip language:",
         "no_trips": "You have no trips yet.",
         "unknown": "I didn't understand that. Use menu buttons.",
-        "help_text": "MVP actions: create trip, list trips, change language.",
+        "help_text": "MVP actions: create trip, list trips, join by ID, change language.",
     },
     "ru": {
         "welcome": "Привет. Я помогаю группам вести расходы в поездках и взаиморасчёты.",
@@ -57,7 +57,7 @@ TRANSLATIONS = {
         "choose_trip_language": "Выбери язык поездки:",
         "no_trips": "У тебя пока нет поездок.",
         "unknown": "Не понял сообщение. Используй кнопки меню.",
-        "help_text": "MVP-действия: создать поездку, посмотреть поездки, сменить язык.",
+        "help_text": "MVP-действия: создать поездку, посмотреть поездки, вступить по ID, сменить язык.",
     },
     "ro": {
         "welcome": "Salut. Te ajut să gestionezi cheltuielile de grup din călătorii.",
@@ -74,7 +74,7 @@ TRANSLATIONS = {
         "choose_trip_language": "Alege limba călătoriei:",
         "no_trips": "Încă nu ai călătorii.",
         "unknown": "Nu am înțeles mesajul. Folosește butoanele.",
-        "help_text": "Acțiuni MVP: creează călătorie, vezi călătoriile, schimbă limba.",
+        "help_text": "Acțiuni MVP: creează călătorie, vezi călătoriile, intră după ID, schimbă limba.",
     },
     "it": {
         "welcome": "Ciao. Ti aiuto a gestire le spese di gruppo in viaggio.",
@@ -91,7 +91,7 @@ TRANSLATIONS = {
         "choose_trip_language": "Scegli la lingua del viaggio:",
         "no_trips": "Non hai ancora viaggi.",
         "unknown": "Messaggio non riconosciuto. Usa i pulsanti.",
-        "help_text": "Azioni MVP: crea viaggio, vedi viaggi, cambia lingua.",
+        "help_text": "Azioni MVP: crea viaggio, vedi viaggi, entra tramite ID, cambia lingua.",
     },
     "fr": {
         "welcome": "Bonjour. Je t'aide à gérer les dépenses de groupe en voyage.",
@@ -108,7 +108,7 @@ TRANSLATIONS = {
         "choose_trip_language": "Choisissez la langue du voyage :",
         "no_trips": "Tu n'as pas encore de voyages.",
         "unknown": "Je n'ai pas compris. Utilise les boutons.",
-        "help_text": "Actions MVP : créer un voyage, voir les voyages, changer la langue.",
+        "help_text": "Actions MVP : créer un voyage, voir les voyages, rejoindre via ID, changer la langue.",
     },
     "es": {
         "welcome": "Hola. Te ayudo a gestionar gastos grupales de viaje.",
@@ -125,7 +125,7 @@ TRANSLATIONS = {
         "choose_trip_language": "Elige el idioma del viaje:",
         "no_trips": "Todavía no tienes viajes.",
         "unknown": "No entendí el mensaje. Usa los botones.",
-        "help_text": "Acciones MVP: crear viaje, ver viajes, cambiar idioma.",
+        "help_text": "Acciones MVP: crear viaje, ver viajes, unirse por ID, cambiar idioma.",
     },
 }
 
@@ -260,6 +260,46 @@ class TripDB:
             )
             return cur.fetchall()
 
+    def get_trip_by_id(self, trip_id: int):
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, title, base_currency, trip_language, status, created_at
+                FROM trips
+                WHERE id = %s
+                LIMIT 1
+                """,
+                (trip_id,),
+            )
+            return cur.fetchone()
+
+    def add_trip_member(self, trip_id: int, user_id: int, role: str = "member") -> bool:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO trip_members (trip_id, user_id, role)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (trip_id, user_id)
+                DO UPDATE SET is_active = TRUE
+                """,
+                (trip_id, user_id, role),
+            )
+            conn.commit()
+            return True
+
+    def is_trip_member(self, trip_id: int, user_id: int) -> bool:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1
+                FROM trip_members
+                WHERE trip_id = %s AND user_id = %s AND is_active = TRUE
+                LIMIT 1
+                """,
+                (trip_id, user_id),
+            )
+            return cur.fetchone() is not None
+
 
 def language_keyboard():
     builder = InlineKeyboardBuilder()
@@ -378,10 +418,30 @@ async def my_trips_button(message: Message):
     lines = [f"*{t(lang, 'my_trips')}*"]
     for trip_id, title, currency, trip_language, status, created_at in trips:
         lines.append(f"• #{trip_id} {title} | {currency} | {trip_language.upper()} | {status}")
-    await message.answer("\n".join(lines), parse_mode="Markdown", reply_markup=main_menu_keyboard(lang))
+    await message.answer("
+".join(lines), parse_mode="Markdown", reply_markup=main_menu_keyboard(lang))
 
 
 @dp.message(Command("mytrips"))
+async def my_trips_command(message: Message):
+    await my_trips_button(message)
+
+
+@dp.message(F.text.startswith("🔗"))
+async def join_trip_button(message: Message):
+    lang = current_lang(message.from_user.id)
+    PENDING_INPUTS[message.from_user.id] = {"flow": "join_trip", "step": "trip_id"}
+    await message.answer("Введи ID поездки. Например: 1", reply_markup=main_menu_keyboard(lang))
+
+
+@dp.message(Command("jointrip"))
+async def join_trip_command(message: Message):
+    lang = current_lang(message.from_user.id)
+    PENDING_INPUTS[message.from_user.id] = {"flow": "join_trip", "step": "trip_id"}
+    await message.answer("Введи ID поездки. Например: 1", reply_markup=main_menu_keyboard(lang))
+
+
+@dp.message(Command("jointrip"))
 async def my_trips_command(message: Message):
     await my_trips_button(message)
 
