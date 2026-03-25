@@ -1,251 +1,359 @@
+# FINAL STARTUP VERSION (INVITE + SPLIT + LANG)
+
 import asyncio
 import os
+import uuid
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+import asyncpg
+from dotenv import load_dotenv
 
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, CallbackQuery
-from aiogram.filters import CommandStart
-from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
+load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+pool = None
 
-# ===== STORAGE =====
+# ---------------- I18N ----------------
 
-USERS = {}  
-TRIPS = {}  
-EXPENSES = []  
-PENDING = {}
-
-trip_counter = 1
-
-# ===== LANG =====
-
-TEXTS = {
+T = {
     "en": {
-        "welcome": "Welcome!",
-        "choose_lang": "Choose language:",
+        "choose_lang": "Choose language",
         "menu": "Menu",
         "create": "Create trip",
         "join": "Join trip",
-        "open": "Open trip",
         "add": "Add expense",
-        "expenses": "Expenses",
-        "calc": "Calculate",
-        "name": "Enter trip name:",
-        "currency": "Enter currency (EUR):",
-        "id": "Enter trip ID:",
-        "amount": "Enter amount:",
-        "comment": "Enter comment:",
-        "saved": "Saved",
-        "no_trip": "Open trip first",
-        "not_found": "Trip not found",
-        "debts": "Debts"
+        "calc": "Calculate debts",
+        "invite": "Invite code:",
+        "enter_code": "Enter code:",
+        "amount": "Amount:",
+        "comment": "Comment:",
+        "select": "Select participants:",
+        "done": "Done",
+        "created": "Trip created",
+        "joined": "Joined trip",
+        "added": "Expense added",
+        "no_debts": "Nobody owes anyone"
+    },
+    "ru": {
+        "choose_lang": "Выбери язык",
+        "menu": "Меню",
+        "create": "Создать поездку",
+        "join": "Ввести код",
+        "add": "Добавить расход",
+        "calc": "Посчитать долги",
+        "invite": "Код приглашения:",
+        "enter_code": "Введи код:",
+        "amount": "Сумма:",
+        "comment": "Комментарий:",
+        "select": "Выбери участников:",
+        "done": "Готово",
+        "created": "Поездка создана",
+        "joined": "Вы присоединились",
+        "added": "Расход добавлен",
+        "no_debts": "Никто никому не должен"
     }
 }
 
-def t(user_id, key):
-    return TEXTS["en"][key]
+def t(lang, key):
+    return T.get(lang, T["en"]).get(key, key)
 
-# ===== UI =====
+# ---------------- DB ----------------
 
-def menu():
-    kb = ReplyKeyboardBuilder()
-    kb.button(text="✈️ Create trip")
-    kb.button(text="🔗 Join trip")
-    kb.button(text="📂 Open trip")
-    kb.button(text="➕ Add expense")
-    kb.button(text="📊 Expenses")
-    kb.button(text="💸 Calculate")
-    kb.adjust(1)
-    return kb.as_markup(resize_keyboard=True)
+async def init_db():
+    global pool
+    pool = await asyncpg.create_pool(DATABASE_URL)
 
-# ===== START =====
+    async with pool.acquire() as conn:
 
-@dp.message(CommandStart())
-async def start(message: Message):
-    USERS[message.from_user.id] = {
-        "name": message.from_user.first_name,
-        "trip": None
-    }
-    await message.answer("Welcome!", reply_markup=menu())
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            telegram_id BIGINT PRIMARY KEY,
+            name TEXT,
+            lang TEXT DEFAULT 'en',
+            active_trip INT
+        );
+        """)
 
-# ===== CREATE =====
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS trips (
+            id SERIAL PRIMARY KEY,
+            title TEXT,
+            currency TEXT,
+            invite_code TEXT
+        );
+        """)
 
-@dp.message(F.text == "✈️ Create trip")
-async def create(message: Message):
-    PENDING[message.from_user.id] = {"step": "name"}
-    await message.answer("Enter trip name:")
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS members (
+            trip_id INT,
+            user_id BIGINT
+        );
+        """)
 
-# ===== JOIN =====
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS expenses (
+            id SERIAL PRIMARY KEY,
+            trip_id INT,
+            payer BIGINT,
+            amount FLOAT,
+            note TEXT
+        );
+        """)
 
-@dp.message(F.text == "🔗 Join trip")
-async def join(message: Message):
-    PENDING[message.from_user.id] = {"step": "join"}
-    await message.answer("Enter trip ID:")
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS participants (
+            expense_id INT,
+            user_id BIGINT
+        );
+        """)
 
-# ===== OPEN =====
+# ---------------- HELPERS ----------------
 
-@dp.message(F.text == "📂 Open trip")
-async def open_trip(message: Message):
-    PENDING[message.from_user.id] = {"step": "open"}
-    await message.answer("Enter trip ID:")
+async def user(uid):
+    async with pool.acquire() as conn:
+        return await conn.fetchrow("SELECT * FROM users WHERE telegram_id=$1", uid)
 
-# ===== ADD EXPENSE =====
+async def create_user(uid, name):
+    async with pool.acquire() as conn:
+        await conn.execute("INSERT INTO users (telegram_id,name) VALUES ($1,$2) ON CONFLICT DO NOTHING", uid, name)
 
-@dp.message(F.text == "➕ Add expense")
-async def add(message: Message):
-    uid = message.from_user.id
+async def set_lang(uid, lang):
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE users SET lang=$1 WHERE telegram_id=$2", lang, uid)
 
-    if USERS[uid]["trip"] is None:
-        return await message.answer("Open trip first")
+async def set_trip(uid, trip):
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE users SET active_trip=$1 WHERE telegram_id=$2", trip, uid)
 
-    PENDING[uid] = {"step": "amount"}
-    await message.answer("Enter amount:")
+async def name(uid):
+    u = await user(uid)
+    return u["name"] if u else str(uid)
 
-# ===== SHOW EXPENSES =====
+# ---------------- UI ----------------
 
-@dp.message(F.text == "📊 Expenses")
-async def show(message: Message):
-    uid = message.from_user.id
-    trip = USERS[uid]["trip"]
+def lang_kb():
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="English"), KeyboardButton(text="Русский")]
+    ], resize_keyboard=True)
 
-    data = [e for e in EXPENSES if e["trip"] == trip]
+def menu(lang):
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text=t(lang,"create"))],
+        [KeyboardButton(text=t(lang,"join"))],
+        [KeyboardButton(text=t(lang,"add"))],
+        [KeyboardButton(text=t(lang,"calc"))],
+    ], resize_keyboard=True)
 
-    if not data:
-        return await message.answer("No expenses")
+# ---------------- START ----------------
 
-    text = ""
-    for e in data:
-        name = USERS[e["user"]]["name"]
-        text += f"{name}: {e['amount']} - {e['comment']}\n"
+@dp.message(Command("start"))
+async def start(m):
+    await create_user(m.from_user.id, m.from_user.full_name)
+    await m.answer("🌍", reply_markup=lang_kb())
 
-    await message.answer(text)
+# ---------------- LANG ----------------
 
-# ===== CALCULATE =====
+@dp.message(lambda m: m.text in ["English","Русский"])
+async def lang(m):
+    lang = "en" if m.text=="English" else "ru"
+    await set_lang(m.from_user.id, lang)
+    await m.answer(t(lang,"menu"), reply_markup=menu(lang))
 
-@dp.message(F.text == "💸 Calculate")
-async def calc(message: Message):
-    uid = message.from_user.id
-    trip = USERS[uid]["trip"]
+# ---------------- STATES ----------------
 
-    members = TRIPS[trip]["members"]
-    data = [e for e in EXPENSES if e["trip"] == trip]
+states = {}
+select_states = {}
 
-    balances = {m: 0 for m in members}
+# ---------------- HANDLER ----------------
 
-    for e in data:
-        balances[e["user"]] += e["amount"]
+@dp.message()
+async def h(m):
 
-    total = sum(e["amount"] for e in data)
-    share = total / len(members)
+    u = await user(m.from_user.id)
+    lang = u["lang"]
 
-    for m in members:
-        balances[m] -= share
-
-    debtors = []
-    creditors = []
-
-    for u, v in balances.items():
-        if v < 0:
-            debtors.append([u, abs(v)])
-        elif v > 0:
-            creditors.append([u, v])
-
-    i = j = 0
-    result = "Debts:\n\n"
-
-    while i < len(debtors) and j < len(creditors):
-        d, debt = debtors[i]
-        c, credit = creditors[j]
-
-        pay = min(debt, credit)
-
-        result += f"{USERS[d]['name']} → {USERS[c]['name']}: {round(pay,2)}\n"
-
-        debtors[i][1] -= pay
-        creditors[j][1] -= pay
-
-        if debtors[i][1] < 0.01:
-            i += 1
-        if creditors[j][1] < 0.01:
-            j += 1
-
-    await message.answer(result)
-
-# ===== TEXT HANDLER =====
-
-@dp.message(F.text)
-async def text(message: Message):
-    global trip_counter
-
-    uid = message.from_user.id
-    state = PENDING.get(uid)
-
-    if not state:
+    # CREATE
+    if m.text == t(lang,"create"):
+        states[m.from_user.id] = {"step":"title"}
+        await m.answer("Name:")
         return
 
-    if state["step"] == "name":
-        state["name"] = message.text
-        state["step"] = "currency"
-        return await message.answer("Currency:")
+    # JOIN
+    if m.text == t(lang,"join"):
+        states[m.from_user.id] = {"step":"join"}
+        await m.answer(t(lang,"enter_code"))
+        return
 
-    if state["step"] == "currency":
-        TRIPS[trip_counter] = {
-            "title": state["name"],
-            "currency": message.text,
-            "members": [uid]
-        }
+    # ADD
+    if m.text == t(lang,"add"):
+        states[m.from_user.id] = {"step":"amount"}
+        await m.answer(t(lang,"amount"))
+        return
 
-        USERS[uid]["trip"] = trip_counter
-        trip_counter += 1
-        PENDING.pop(uid)
+    # CALC
+    if m.text == t(lang,"calc"):
+        await calc(m)
+        return
 
-        return await message.answer(f"Trip created ID: {trip_counter-1}")
+    # FLOW
+    if m.from_user.id in states:
+        s = states[m.from_user.id]
 
-    if state["step"] == "join":
-        tid = int(message.text)
+        if s["step"] == "title":
+            code = str(uuid.uuid4())[:6]
 
-        if tid not in TRIPS:
-            return await message.answer("Not found")
+            async with pool.acquire() as conn:
+                trip = await conn.fetchval(
+                    "INSERT INTO trips (title,invite_code) VALUES ($1,$2) RETURNING id",
+                    m.text, code
+                )
+                await conn.execute("INSERT INTO members VALUES ($1,$2)", trip, m.from_user.id)
 
-        TRIPS[tid]["members"].append(uid)
-        USERS[uid]["trip"] = tid
-        PENDING.pop(uid)
+            await set_trip(m.from_user.id, trip)
+            states.pop(m.from_user.id)
 
-        return await message.answer("Joined")
+            await m.answer(f"{t(lang,'created')}\n{t(lang,'invite')} {code}")
+            return
 
-    if state["step"] == "open":
-        tid = int(message.text)
+        if s["step"] == "join":
+            async with pool.acquire() as conn:
+                trip = await conn.fetchrow("SELECT * FROM trips WHERE invite_code=$1", m.text)
 
-        if tid not in TRIPS:
-            return await message.answer("Not found")
+                if trip:
+                    await conn.execute("INSERT INTO members VALUES ($1,$2)", trip["id"], m.from_user.id)
+                    await set_trip(m.from_user.id, trip["id"])
+                    await m.answer(t(lang,"joined"))
+                else:
+                    await m.answer("Invalid code")
 
-        USERS[uid]["trip"] = tid
-        PENDING.pop(uid)
+            states.pop(m.from_user.id)
+            return
 
-        return await message.answer("Opened")
+        if s["step"] == "amount":
+            s["amount"] = float(m.text)
+            s["step"] = "note"
+            await m.answer(t(lang,"comment"))
+            return
 
-    if state["step"] == "amount":
-        state["amount"] = float(message.text)
-        state["step"] = "comment"
-        return await message.answer("Comment:")
+        if s["step"] == "note":
+            s["note"] = m.text
+            await select_users(m)
+            return
 
-    if state["step"] == "comment":
-        EXPENSES.append({
-            "trip": USERS[uid]["trip"],
-            "user": uid,
-            "amount": state["amount"],
-            "comment": message.text
-        })
+# ---------------- SELECT ----------------
 
-        PENDING.pop(uid)
-        return await message.answer("Saved")
+async def select_users(m):
 
-# ===== RUN =====
+    uid = m.from_user.id
+
+    async with pool.acquire() as conn:
+        u = await user(uid)
+        members = await conn.fetch("SELECT user_id FROM members WHERE trip_id=$1", u["active_trip"])
+
+    select_states[uid] = {m["user_id"]:True for m in members}
+
+    await draw_select(m)
+
+async def draw_select(m):
+
+    uid = m.from_user.id
+    state = select_states[uid]
+
+    kb = []
+
+    for u, v in state.items():
+        n = await name(u)
+        kb.append([InlineKeyboardButton(text=("✅ " if v else "❌ ")+n, callback_data=f"tog_{u}")])
+
+    kb.append([InlineKeyboardButton(text="Done", callback_data="done")])
+
+    await m.answer("Select:", reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+
+@dp.callback_query(lambda c: c.data.startswith("tog_"))
+async def tog(c):
+    uid = c.from_user.id
+    u = int(c.data.split("_")[1])
+    select_states[uid][u] = not select_states[uid][u]
+    await c.message.delete()
+    await draw_select(c.message)
+
+@dp.callback_query(lambda c: c.data=="done")
+async def done(c):
+
+    uid = c.from_user.id
+    s = states[uid]
+    selected = [u for u,v in select_states[uid].items() if v]
+
+    async with pool.acquire() as conn:
+        u = await user(uid)
+        e = await conn.fetchval(
+            "INSERT INTO expenses (trip_id,payer,amount,note) VALUES ($1,$2,$3,$4) RETURNING id",
+            u["active_trip"], uid, s["amount"], s["note"]
+        )
+
+        for u in selected:
+            await conn.execute("INSERT INTO participants VALUES ($1,$2)", e, u)
+
+    states.pop(uid)
+    select_states.pop(uid)
+
+    await c.message.answer("Added")
+    await c.answer()
+
+# ---------------- CALC ----------------
+
+async def calc(m):
+
+    uid = m.from_user.id
+
+    async with pool.acquire() as conn:
+
+        u = await user(uid)
+
+        ex = await conn.fetch("SELECT * FROM expenses WHERE trip_id=$1", u["active_trip"])
+
+        bal = {}
+
+        for e in ex:
+            parts = await conn.fetch("SELECT user_id FROM participants WHERE expense_id=$1", e["id"])
+
+            share = e["amount"]/len(parts)
+
+            for p in parts:
+                bal[p["user_id"]] = bal.get(p["user_id"],0) - share
+
+            bal[e["payer"]] = bal.get(e["payer"],0) + e["amount"]
+
+    cred = []
+    debt = []
+
+    for u,b in bal.items():
+        if b>0: cred.append([u,b])
+        if b<0: debt.append([u,-b])
+
+    res=""
+
+    for d,da in debt:
+        for c in cred:
+            if da==0: break
+            cu,ca = c
+            pay = min(da,ca)
+            if pay>0:
+                res += f"{await name(d)} → {await name(cu)}: {round(pay,2)}\n"
+                c[1]-=pay
+                da-=pay
+
+    await m.answer(res or t((await user(uid))["lang"],"no_debts"))
+
+# ---------------- RUN ----------------
 
 async def main():
+    await init_db()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
