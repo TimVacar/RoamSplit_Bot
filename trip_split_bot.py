@@ -819,8 +819,8 @@ async def text_handler(message: Message):
 
     if state and state.get("flow") == "create_trip":
         if state.get("step") == "title":
-        state["title"] = message.text.strip()
-        state["step"] = "currency"
+            state["title"] = message.text.strip()
+            state["step"] = "currency"
 
         await message.answer(
             "Send currency (example: EUR)",
