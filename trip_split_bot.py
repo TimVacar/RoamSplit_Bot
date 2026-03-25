@@ -817,18 +817,18 @@ async def text_handler(message: Message):
     lang = current_lang(user_id)
     state = PENDING_INPUTS.get(user_id)
 
-    if state and state.get("flow") == "create_trip":
-        if state.get("step") == "title":
-            state["title"] = message.text.strip()
-            state["step"] = "currency"
+if state and state.get("flow") == "create_trip":
 
-        await message.answer(
-            "Send currency (example: EUR)",
-            reply_markup=main_menu_keyboard(lang)
-        )
+    # ШАГ 1 — название
+    if state.get("step") == "title":
+        state["title"] = message.text.strip()
+        state["step"] = "currency"
+
+        await message.answer("Send currency (example: EUR)")
         return
 
-    if state.get("step") == "currency":
+    # ШАГ 2 — валюта + СОЗДАНИЕ
+    elif state.get("step") == "currency":
         currency = message.text.strip().upper()
 
         if len(currency) != 3:
@@ -853,7 +853,6 @@ async def text_handler(message: Message):
             reply_markup=trip_menu_keyboard(lang)
         )
         return
-
     if state and state.get("flow") == "join_trip":
         trip_id_raw = message.text.strip()
         if not trip_id_raw.isdigit():
