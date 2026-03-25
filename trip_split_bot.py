@@ -1,6 +1,5 @@
 import asyncio
 import os
-from dataclasses import dataclass
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, CallbackQuery
@@ -9,230 +8,137 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-USERS = {}  # user_id: {lang, active_trip, name}
-TRIPS = {}  # trip_id: {title, currency, members}
-EXPENSES = []
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
+
+# ===== STORAGE =====
+
+USERS = {}  
+TRIPS = {}  
+EXPENSES = []  
 PENDING = {}
 
 trip_counter = 1
 
-SUPPORTED_LANGS = ["en", "ru"]
+# ===== LANG =====
 
 TEXTS = {
     "en": {
         "welcome": "Welcome!",
         "choose_lang": "Choose language:",
-        "create_trip": "Create trip",
-        "join_trip": "Join trip",
-        "open_trip": "Open trip",
-        "add_expense": "Add expense",
-        "show_expenses": "Expenses",
-        "calculate": "Calculate",
-        "enter_name": "Enter trip name:",
-        "enter_currency": "Enter currency:",
-        "invalid_currency": "Currency must be 3 letters",
-        "created": "Trip created!",
-        "enter_trip_id": "Enter trip ID:",
-        "trip_not_found": "Trip not found",
-        "joined": "Joined trip",
-        "opened": "Opened trip",
-        "enter_amount": "Enter amount:",
-        "enter_comment": "Enter comment:",
-        "expense_saved": "Expense saved",
-        "no_trip": "Open a trip first",
-        "debts": "Debts",
-        "no_expenses": "No expenses",
-        "members": "Members"
-    },
-    "ru": {
-        "welcome": "Добро пожаловать!",
-        "choose_lang": "Выбери язык:",
-        "create_trip": "Создать поездку",
-        "join_trip": "Вступить",
-        "open_trip": "Открыть",
-        "add_expense": "Добавить расход",
-        "show_expenses": "Расходы",
-        "calculate": "Рассчитать",
-        "enter_name": "Введи название:",
-        "enter_currency": "Введи валюту:",
-        "invalid_currency": "3 буквы",
-        "created": "Поездка создана!",
-        "enter_trip_id": "Введи ID:",
-        "trip_not_found": "Не найдено",
-        "joined": "Ты вступил",
-        "opened": "Открыто",
-        "enter_amount": "Сумма:",
-        "enter_comment": "Комментарий:",
-        "expense_saved": "Сохранено",
-        "no_trip": "Сначала открой поездку",
-        "debts": "Долги",
-        "no_expenses": "Нет расходов",
-        "members": "Участники"
+        "menu": "Menu",
+        "create": "Create trip",
+        "join": "Join trip",
+        "open": "Open trip",
+        "add": "Add expense",
+        "expenses": "Expenses",
+        "calc": "Calculate",
+        "name": "Enter trip name:",
+        "currency": "Enter currency (EUR):",
+        "id": "Enter trip ID:",
+        "amount": "Enter amount:",
+        "comment": "Enter comment:",
+        "saved": "Saved",
+        "no_trip": "Open trip first",
+        "not_found": "Trip not found",
+        "debts": "Debts"
     }
 }
 
-
-@dataclass
-class Trip:
-    id: int
-    title: str
-    currency: str
-    owner_id: int
-
-
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
-
-
-# ========= HELPERS =========
-
-def get_lang(user_id):
-    return USERS.get(user_id, {}).get("lang", "en")
-
-
 def t(user_id, key):
-    return TEXTS[get_lang(user_id)].get(key, key)
+    return TEXTS["en"][key]
 
+# ===== UI =====
 
-def get_name(user_id):
-    return USERS.get(user_id, {}).get("name", str(user_id))
-
-
-def main_menu(user_id):
+def menu():
     kb = ReplyKeyboardBuilder()
-    kb.button(text=f"✈️ {t(user_id, 'create_trip')}")
-    kb.button(text=f"🔗 {t(user_id, 'join_trip')}")
-    kb.button(text=f"📂 {t(user_id, 'open_trip')}")
-    kb.button(text=f"➕ {t(user_id, 'add_expense')}")
-    kb.button(text=f"📊 {t(user_id, 'show_expenses')}")
-    kb.button(text=f"💸 {t(user_id, 'calculate')}")
+    kb.button(text="✈️ Create trip")
+    kb.button(text="🔗 Join trip")
+    kb.button(text="📂 Open trip")
+    kb.button(text="➕ Add expense")
+    kb.button(text="📊 Expenses")
+    kb.button(text="💸 Calculate")
     kb.adjust(1)
     return kb.as_markup(resize_keyboard=True)
 
-
-def lang_keyboard():
-    kb = InlineKeyboardBuilder()
-    for l in SUPPORTED_LANGS:
-        kb.button(text=l.upper(), callback_data=f"lang:{l}")
-    kb.adjust(2)
-    return kb.as_markup()
-
-
-# ========= HANDLERS =========
+# ===== START =====
 
 @dp.message(CommandStart())
 async def start(message: Message):
     USERS[message.from_user.id] = {
-        "lang": "en",
-        "active_trip": None,
-        "name": message.from_user.first_name
+        "name": message.from_user.first_name,
+        "trip": None
     }
-
-    await message.answer("Welcome!")
-    await message.answer("Choose language:", reply_markup=lang_keyboard())
-
-
-@dp.callback_query(F.data.startswith("lang:"))
-async def set_language(callback: CallbackQuery):
-    lang = callback.data.split(":")[1]
-    USERS[callback.from_user.id]["lang"] = lang
-
-    await callback.answer()
-    await callback.message.answer(
-        t(callback.from_user.id, "welcome"),
-        reply_markup=main_menu(callback.from_user.id)
-    )
-
+    await message.answer("Welcome!", reply_markup=menu())
 
 # ===== CREATE =====
 
-@dp.message(F.text.startswith("✈️"))
-async def create_trip_start(message: Message):
-    PENDING[message.from_user.id] = {"step": "title"}
-    await message.answer(t(message.from_user.id, "enter_name"))
-
+@dp.message(F.text == "✈️ Create trip")
+async def create(message: Message):
+    PENDING[message.from_user.id] = {"step": "name"}
+    await message.answer("Enter trip name:")
 
 # ===== JOIN =====
 
-@dp.message(F.text.startswith("🔗"))
-async def join_trip_start(message: Message):
-    PENDING[message.from_user.id] = {"step": "join_trip"}
-    await message.answer(t(message.from_user.id, "enter_trip_id"))
-
+@dp.message(F.text == "🔗 Join trip")
+async def join(message: Message):
+    PENDING[message.from_user.id] = {"step": "join"}
+    await message.answer("Enter trip ID:")
 
 # ===== OPEN =====
 
-@dp.message(F.text.startswith("📂"))
-async def open_trip_start(message: Message):
-    PENDING[message.from_user.id] = {"step": "open_trip"}
-    await message.answer(t(message.from_user.id, "enter_trip_id"))
-
+@dp.message(F.text == "📂 Open trip")
+async def open_trip(message: Message):
+    PENDING[message.from_user.id] = {"step": "open"}
+    await message.answer("Enter trip ID:")
 
 # ===== ADD EXPENSE =====
 
-@dp.message(F.text.startswith("➕"))
-async def add_expense_start(message: Message):
-    user_id = message.from_user.id
+@dp.message(F.text == "➕ Add expense")
+async def add(message: Message):
+    uid = message.from_user.id
 
-    if USERS[user_id]["active_trip"] is None:
-        await message.answer(t(user_id, "no_trip"))
-        return
+    if USERS[uid]["trip"] is None:
+        return await message.answer("Open trip first")
 
-    PENDING[user_id] = {"step": "amount"}
-    await message.answer(t(user_id, "enter_amount"))
-
+    PENDING[uid] = {"step": "amount"}
+    await message.answer("Enter amount:")
 
 # ===== SHOW EXPENSES =====
 
-@dp.message(F.text.startswith("📊"))
-async def show_expenses(message: Message):
-    user_id = message.from_user.id
-    trip_id = USERS[user_id]["active_trip"]
+@dp.message(F.text == "📊 Expenses")
+async def show(message: Message):
+    uid = message.from_user.id
+    trip = USERS[uid]["trip"]
 
-    if trip_id is None:
-        await message.answer(t(user_id, "no_trip"))
-        return
+    data = [e for e in EXPENSES if e["trip"] == trip]
 
-    trip_expenses = [e for e in EXPENSES if e["trip_id"] == trip_id]
+    if not data:
+        return await message.answer("No expenses")
 
-    if not trip_expenses:
-        await message.answer(t(user_id, "no_expenses"))
-        return
-
-    text = "Expenses:\n\n"
-    for e in trip_expenses:
-        name = get_name(e["user_id"])
+    text = ""
+    for e in data:
+        name = USERS[e["user"]]["name"]
         text += f"{name}: {e['amount']} - {e['comment']}\n"
 
     await message.answer(text)
 
+# ===== CALCULATE =====
 
-# ===== PRO CALCULATE =====
+@dp.message(F.text == "💸 Calculate")
+async def calc(message: Message):
+    uid = message.from_user.id
+    trip = USERS[uid]["trip"]
 
-@dp.message(F.text.startswith("💸"))
-async def calculate(message: Message):
-    user_id = message.from_user.id
-    trip_id = USERS[user_id]["active_trip"]
-
-    if trip_id is None:
-        await message.answer(t(user_id, "no_trip"))
-        return
-
-    trip = TRIPS.get(trip_id)
-    members = trip["members"]
-
-    trip_expenses = [e for e in EXPENSES if e["trip_id"] == trip_id]
-
-    if not trip_expenses:
-        await message.answer(t(user_id, "no_expenses"))
-        return
+    members = TRIPS[trip]["members"]
+    data = [e for e in EXPENSES if e["trip"] == trip]
 
     balances = {m: 0 for m in members}
 
-    for e in trip_expenses:
-        balances[e["user_id"]] += e["amount"]
+    for e in data:
+        balances[e["user"]] += e["amount"]
 
-    total = sum(e["amount"] for e in trip_expenses)
+    total = sum(e["amount"] for e in data)
     share = total / len(members)
 
     for m in members:
@@ -241,22 +147,22 @@ async def calculate(message: Message):
     debtors = []
     creditors = []
 
-    for u, val in balances.items():
-        if val < 0:
-            debtors.append([u, abs(val)])
-        elif val > 0:
-            creditors.append([u, val])
+    for u, v in balances.items():
+        if v < 0:
+            debtors.append([u, abs(v)])
+        elif v > 0:
+            creditors.append([u, v])
 
     i = j = 0
-    result = f"{t(user_id, 'debts')}:\n\n"
+    result = "Debts:\n\n"
 
     while i < len(debtors) and j < len(creditors):
-        d_id, debt = debtors[i]
-        c_id, credit = creditors[j]
+        d, debt = debtors[i]
+        c, credit = creditors[j]
 
         pay = min(debt, credit)
 
-        result += f"{get_name(d_id)} → {get_name(c_id)}: {round(pay,2)}\n"
+        result += f"{USERS[d]['name']} → {USERS[c]['name']}: {round(pay,2)}\n"
 
         debtors[i][1] -= pay
         creditors[j][1] -= pay
@@ -268,95 +174,79 @@ async def calculate(message: Message):
 
     await message.answer(result)
 
-
 # ===== TEXT HANDLER =====
 
 @dp.message(F.text)
-async def text_handler(message: Message):
+async def text(message: Message):
     global trip_counter
 
-    user_id = message.from_user.id
-    state = PENDING.get(user_id)
+    uid = message.from_user.id
+    state = PENDING.get(uid)
 
-    if state:
+    if not state:
+        return
 
-        if state.get("step") == "title":
-            state["title"] = message.text
-            state["step"] = "currency"
-            return await message.answer(t(user_id, "enter_currency"))
+    if state["step"] == "name":
+        state["name"] = message.text
+        state["step"] = "currency"
+        return await message.answer("Currency:")
 
-        elif state.get("step") == "currency":
-            currency = message.text.upper()
+    if state["step"] == "currency":
+        TRIPS[trip_counter] = {
+            "title": state["name"],
+            "currency": message.text,
+            "members": [uid]
+        }
 
-            if len(currency) != 3:
-                return await message.answer(t(user_id, "invalid_currency"))
+        USERS[uid]["trip"] = trip_counter
+        trip_counter += 1
+        PENDING.pop(uid)
 
-            TRIPS[trip_counter] = {
-                "title": state["title"],
-                "currency": currency,
-                "members": [user_id]
-            }
+        return await message.answer(f"Trip created ID: {trip_counter-1}")
 
-            USERS[user_id]["active_trip"] = trip_counter
-            trip_counter += 1
-            PENDING.pop(user_id)
+    if state["step"] == "join":
+        tid = int(message.text)
 
-            return await message.answer(
-                f"{t(user_id, 'created')} ID: {trip_counter-1}",
-                reply_markup=main_menu(user_id)
-            )
+        if tid not in TRIPS:
+            return await message.answer("Not found")
 
-        elif state.get("step") == "join_trip":
-            trip_id = int(message.text)
+        TRIPS[tid]["members"].append(uid)
+        USERS[uid]["trip"] = tid
+        PENDING.pop(uid)
 
-            if trip_id not in TRIPS:
-                return await message.answer(t(user_id, "trip_not_found"))
+        return await message.answer("Joined")
 
-            TRIPS[trip_id]["members"].append(user_id)
-            USERS[user_id]["active_trip"] = trip_id
-            PENDING.pop(user_id)
+    if state["step"] == "open":
+        tid = int(message.text)
 
-            return await message.answer(f"{t(user_id, 'joined')} #{trip_id}")
+        if tid not in TRIPS:
+            return await message.answer("Not found")
 
-        elif state.get("step") == "open_trip":
-            trip_id = int(message.text)
+        USERS[uid]["trip"] = tid
+        PENDING.pop(uid)
 
-            if trip_id not in TRIPS:
-                return await message.answer(t(user_id, "trip_not_found"))
+        return await message.answer("Opened")
 
-            USERS[user_id]["active_trip"] = trip_id
-            PENDING.pop(user_id)
+    if state["step"] == "amount":
+        state["amount"] = float(message.text)
+        state["step"] = "comment"
+        return await message.answer("Comment:")
 
-            return await message.answer(f"{t(user_id, 'opened')} #{trip_id}")
+    if state["step"] == "comment":
+        EXPENSES.append({
+            "trip": USERS[uid]["trip"],
+            "user": uid,
+            "amount": state["amount"],
+            "comment": message.text
+        })
 
-        elif state.get("step") == "amount":
-            try:
-                state["amount"] = float(message.text)
-            except:
-                return
+        PENDING.pop(uid)
+        return await message.answer("Saved")
 
-            state["step"] = "comment"
-            return await message.answer(t(user_id, "enter_comment"))
-
-        elif state.get("step") == "comment":
-            trip_id = USERS[user_id]["active_trip"]
-
-            EXPENSES.append({
-                "trip_id": trip_id,
-                "user_id": user_id,
-                "amount": state["amount"],
-                "comment": message.text
-            })
-
-            PENDING.pop(user_id)
-            return await message.answer(t(user_id, "expense_saved"))
-
-    await message.answer(t(user_id, "menu"))
-
+# ===== RUN =====
 
 async def main():
     await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
