@@ -819,37 +819,40 @@ async def text_handler(message: Message):
 
     if state and state.get("flow") == "create_trip":
         if state.get("step") == "title":
-            state["title"] = message.text.strip()
-            state["step"] = "currency"
-            await message.answer(t(lang, "enter_trip_currency"), reply_markup=main_menu_keyboard(lang))
+        state["title"] = message.text.strip()
+        state["step"] = "currency"
+
+        await message.answer(
+            "Send currency (example: EUR)",
+            reply_markup=main_menu_keyboard(lang)
+        )
+        return
+
+    if state.get("step") == "currency":
+        currency = message.text.strip().upper()
+
+        if len(currency) != 3:
+            await message.answer("Invalid currency. Example: EUR")
             return
 
-        if state.get("step") == "currency":
-            state["currency"] = message.text.strip().upper() or DEFAULT_TRIP_CURRENCY
-            state["step"] = "trip_language"
-            await message.answer(t(lang, "enter_trip_language"), reply_markup=main_menu_keyboard(lang))
-            return
+        state["currency"] = currency
 
-        if state.get("step") == "trip_language":
-            trip_lang = message.text.strip().lower()
-            if trip_lang not in SUPPORTED_LANGUAGES:
-                await message.answer(t(lang, "invalid_language"), reply_markup=main_menu_keyboard(lang))
-                return
+        draft = TripCreateDraft(
+            title=state["title"],
+            currency=state["currency"],
+            trip_language="en"
+        )
 
-            draft = TripCreateDraft(
-                title=state["title"],
-                currency=state["currency"],
-                trip_language=trip_lang,
-            )
-            trip_id = db.create_trip(message.from_user.id, draft)
-            db.set_active_trip(message.from_user.id, trip_id)
-            PENDING_INPUTS.pop(user_id, None)
+        trip_id = db.create_trip(message.from_user.id, draft)
+        db.set_active_trip(message.from_user.id, trip_id)
 
-            await message.answer(
-                f"{t(lang, 'trip_created')}\nID: {trip_id}\n{draft.title} | {draft.currency} | {draft.trip_language.upper()}",
-                reply_markup=trip_menu_keyboard(lang),
-            )
-            return
+        PENDING_INPUTS.pop(user_id, None)
+
+        await message.answer(
+            f"Trip created!\nID: {trip_id}\n{draft.title} | {draft.currency}",
+            reply_markup=trip_menu_keyboard(lang)
+        )
+        return
 
     if state and state.get("flow") == "join_trip":
         trip_id_raw = message.text.strip()
